@@ -8,6 +8,7 @@ from datetime import datetime, timedelta
 
 consonants = "bcdfghjklmnpqrstvwxyz"
 vowels = "aeiou"
+processed_files = []  # List to keep track of processed files
 
 """If given string is blank return blank, otherwise replace"""
 def perturb_name(s, syllables=2):
@@ -151,29 +152,43 @@ def perturb_data(content, file_name):
     return '\n'.join(lines)
 
 def process_file(file_path):
-    """Read, perturb, and save a new file."""
+    """Read, perturb, and save a new file in the program directory."""
     with open(file_path, 'r', encoding='utf-8') as f:
         content = f.read()
+    
     file_name = os.path.basename(file_path)
     modified_content = perturb_data(content, file_name)
     
-    new_file = file_path.replace('.', '_perturbed.')
-    with open(new_file, 'w', encoding='utf-8') as f:
+    new_file_name = os.path.basename(file_path).replace('.', '_perturbed.')
+    new_file_path = os.path.join(os.getcwd(), new_file_name)  # Save in program directory
+    
+    with open(new_file_path, 'w', encoding='utf-8') as f:
         f.write(modified_content)
     
-    status_label.config(text = f"Processed: {os.path.basename(new_file)}")
+    processed_files.append(os.path.basename(file_path))  # Add to processed list
+    update_processed_list()
+    
+    status_label.config(text=f"")
+
+def update_processed_list():
+    """Update the label displaying processed files."""
+    processed_label.config(text="Processed Files:\n" + '\n'.join(processed_files))
 
 def on_drop(event):
     """Handle dropped files."""
+    valid_prefixes = ("idsa", "igsa", "igsg", "igco")
     files = event.data.strip().split()  # Handle multiple files
     for file in files:
         file = file.strip('{}')  # Remove curly braces on Windows
-        process_file(file)
+        if os.path.basename(file).lower().startswith(valid_prefixes):
+            process_file(file)
+        else:
+            status_label.config(text="Not a valid file: " + os.path.basename(file))
 
 # Set up GUI
 root = TkinterDnD.Tk()
 root.title("ISIR Perturbation Tool")
-root.geometry("400x200")
+root.geometry("400x300")
 
 drop_label = tk.Label(root, text="Drag and drop ISIR files here", bg="lightgray", relief="ridge")
 drop_label.pack(expand=True, fill="both", padx=10, pady=10)
@@ -183,5 +198,8 @@ drop_label.dnd_bind('<<Drop>>', on_drop)
 
 status_label = tk.Label(root, text="Waiting for files...")
 status_label.pack(pady=10)
+
+processed_label = tk.Label(root, text="Processed Files:\n", justify="left")
+processed_label.pack(pady=10)
 
 root.mainloop()
